@@ -92,11 +92,14 @@ public class FirstPersonController : MonoBehaviour
         }
     }
 
-    bool IsGrounded()
+bool IsGrounded()
     {
         if (col == null) return true;
-        float halfHeight = col.height * 0.5f * transform.lossyScale.y;
-        float castDist = halfHeight - col.radius * transform.lossyScale.y + groundCheckDistance + 0.05f;
-        return Physics.Raycast(transform.position, Vector3.down, castDist, groundMask, QueryTriggerInteraction.Ignore);
+        float scaleY = transform.lossyScale.y;
+        float radius = col.radius * Mathf.Max(transform.lossyScale.x, transform.lossyScale.z) * 0.9f;
+        float halfHeight = col.height * 0.5f * scaleY;
+        Vector3 origin = transform.position + Vector3.up * (radius - halfHeight + 0.05f);
+        float castDist = groundCheckDistance + 0.1f;
+        return Physics.SphereCast(origin, radius, Vector3.down, out _, castDist, groundMask, QueryTriggerInteraction.Ignore);
     }
 }
