@@ -20,9 +20,8 @@ public class FlashlightController : MonoBehaviour
         if (kb.fKey.wasPressedThisFrame) SetState(beam != null && !beam.enabled);
     }
 
-    void SetState(bool on)
+void SetState(bool on)
     {
         if (beam != null) beam.enabled = on;
-        if (model != null) model.SetActive(on);
     }
 }
