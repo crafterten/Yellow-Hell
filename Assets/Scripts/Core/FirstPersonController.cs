@@ -2,22 +2,37 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody))]
-public class PillController : MonoBehaviour
+public class FirstPersonController : MonoBehaviour
 {
-    public float moveSpeed = 6f;
+    public float walkSpeed = 4.5f;
+    public float sprintSpeed = 7.5f;
     public float jumpForce = 6f;
     public float mouseSensitivity = 0.15f;
     public float groundCheckDistance = 0.1f;
     public LayerMask groundMask = ~0;
     public Transform cameraPivot;
 
+    public float maxStamina = 100f;
+    public float staminaDrain = 25f;
+    public float staminaRegen = 15f;
+    public float staminaRegenDelay = 1.2f;
+
     Rigidbody rb;
+    CapsuleCollider col;
     float pitch;
+    float stamina;
+    float lastSprintTime;
+    bool sprintLocked;
+
+    public float Stamina => stamina;
+    public bool IsSprinting { get; private set; }
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        col = GetComponent<CapsuleCollider>();
         rb.freezeRotation = true;
+        stamina = maxStamina;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -43,10 +58,26 @@ public class PillController : MonoBehaviour
         if (kb.wKey.isPressed) v += 1f;
         if (kb.sKey.isPressed) v -= 1f;
 
+        bool wantSprint = kb.leftShiftKey.isPressed && v > 0f && !sprintLocked;
+        IsSprinting = wantSprint && stamina > 0f;
+        float speed = IsSprinting ? sprintSpeed : walkSpeed;
+
+        if (IsSprinting)
+        {
+            stamina -= staminaDrain * Time.deltaTime;
+            lastSprintTime = Time.time;
+            if (stamina <= 0f) { stamina = 0f; sprintLocked = true; }
+        }
+        else if (Time.time - lastSprintTime > staminaRegenDelay)
+        {
+            stamina = Mathf.Min(maxStamina, stamina + staminaRegen * Time.deltaTime);
+            if (sprintLocked && stamina > maxStamina * 0.3f) sprintLocked = false;
+        }
+
         Vector3 dir = (transform.right * h + transform.forward * v).normalized;
         Vector3 vel = rb.linearVelocity;
-        vel.x = dir.x * moveSpeed;
-        vel.z = dir.z * moveSpeed;
+        vel.x = dir.x * speed;
+        vel.z = dir.z * speed;
         rb.linearVelocity = vel;
 
         if (kb.spaceKey.wasPressedThisFrame && IsGrounded())
@@ -63,9 +94,9 @@ public class PillController : MonoBehaviour
 
     bool IsGrounded()
     {
-        var col = GetComponent<CapsuleCollider>();
-        float halfHeight = col != null ? col.height * 0.5f * transform.lossyScale.y : 1f;
-        float castDist = halfHeight - (col != null ? col.radius * transform.lossyScale.y : 0.5f) + groundCheckDistance + 0.05f;
+        if (col == null) return true;
+        float halfHeight = col.height * 0.5f * transform.lossyScale.y;
+        float castDist = halfHeight - col.radius * transform.lossyScale.y + groundCheckDistance + 0.05f;
         return Physics.Raycast(transform.position, Vector3.down, castDist, groundMask, QueryTriggerInteraction.Ignore);
     }
 }
